@@ -13,7 +13,7 @@ A wordpress plugin to integrate Taleo Job Listings
 To Add new jobs from Taleo into wordpress 
 1. In the wordpress admin panel click settings, then click add taleo jobs button 
 
-### Programmatically Add Job 
+### Programmatically Add Jobs
 
  ``` php
  
