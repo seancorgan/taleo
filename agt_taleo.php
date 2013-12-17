@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AGT Taleo Plugin
  * Description: A Wordpress Plugin to manage Job listing in taleo
- * Version: 0.1
+ * Version: 1.0
  * Author: Sean Corgan
  * Author URI:  
  */
