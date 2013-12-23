@@ -116,9 +116,9 @@ class Agt_taleo extends TaleoClient {
 			 } 
 		endif;
 		if($job_count > 1) { 
-			echo json_encode(array('status' => "success", 'message' => "Jobs Successfuly Added")); 
+			echo json_encode(array("status" => "success", "message" => "Jobs Successfuly Added")); 
 		} else { 
-			echo json_encode(array('status' => "success", "message" => "No New Jobs Added.")); 
+			echo json_encode(array("status" => "success", "message" => "No New Jobs Added."));
 		}
 		die();
 	}
@@ -418,7 +418,12 @@ class Agt_taleo extends TaleoClient {
 		</form>
 			<hr>
 			<h3>Manual Sync</h3>
+			<div id="message">
+				
+			</div>
 			<button id="sync-jobs" class="button button-primary">Add New Jobs</button>
+
+			<div style="display:none" id="loading-icon"><img src="<?php echo site_url(); ?>/wp-includes/js/tinymce/themes/advanced/skins/default/img/progress.gif"/></div>
 
 		<?php 
 	}
