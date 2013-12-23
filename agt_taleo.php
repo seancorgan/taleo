@@ -8,8 +8,7 @@
  */
 require_once('taleo.class.php'); 
 
-// @todo - enable/disable contact form 7 integration 
-// @todo - should refactor add_job - DRY!
+// @todo - enable/disable contact form 7 integration in settings panel 
 
 class Agt_taleo extends TaleoClient {
 	
@@ -107,14 +106,20 @@ class Agt_taleo extends TaleoClient {
 	function manually_sync_jobs() {
 		global $wpdb;
 		$jobs = $this->findRequisitionsForPublishing("", TRUE);
-		
+		$job_count = 0; 
 		if(!empty($jobs)):
 			foreach ($jobs as $job) {
 			 	if(!$this->check_if_job_in_system($job->id)): 
-			 		$this->add_job($job->id); 
+			 		$this->add_job($job->id);
+			 		$job_count++;  
 			 	endif;
 			 } 
-		endif; 
+		endif;
+		if($job_count > 1) { 
+			echo json_encode(array('status' => "success", 'message' => "Jobs Successfuly Added")); 
+		} else { 
+			echo json_encode(array('status' => "success", "message" => "No New Jobs Added.")); 
+		}
 		die();
 	}
 
@@ -139,6 +144,24 @@ class Agt_taleo extends TaleoClient {
 			return FALSE; 
 		endif; 
 	}
+	/**
+	* Goes through an array of objects and pulls out the matching property value
+	* @param $array_of_objects array - An array of objects 
+	* @param $field_type string - The field name from taleo
+	* @return string - the value of the field
+	*/
+	function agt_find_object($array_of_objects, $field_type) { 
+
+		$callback = function ($e, $field_type) use ($array_of_objects, $field_type) {
+		    return $e->fieldName == $field_type; 
+		};
+		  
+		$neededObject = array_filter($array_of_objects, $callback);
+
+		$object = array_pop($neededObject); 
+
+		return $object->valueStr; 
+	}
 
 	/**
 	* Adds Job 
@@ -157,26 +180,29 @@ class Agt_taleo extends TaleoClient {
 		);
 
 		// add post 
-		$post_id = wp_insert_post( $my_post);
+	 	$post_id = wp_insert_post( $my_post); 
+		
+		$job_type = $this->agt_find_object($job->flexValues->item, "jobType"); 
 
 		// This is a taxonomy
 		$location = $job->location; 
-		$job_type = $job->flexValues->item[7]->valueStr;
-		$budgeted = $job->flexValues->item[9]->valueStr;
-		$featured_job = $job->flexValues->item[10]->valueStr;
-		$wage_frequency = $job->flexValues->item[11]->valueStr;
+		$job_type = $this->agt_find_object($job->flexValues->item, "jobType");
+		$budgeted = $this->agt_find_object($job->flexValues->item, "Budgeted");
+		$featured_job = $this->agt_find_object($job->flexValues->item, "Featured Job");
+		$wage_frequency = $this->agt_find_object($job->flexValues->item, "Wage Frequency");
+
 		// This is a taxonomy
-		$job_category = $job->flexValues->item[12]->valueStr;
-		$wage_currency = $job->flexValues->item[13]->valueStr;
-		$relocation = $job->flexValues->item[7]->valueStr;
-		$supervisory = $job->flexValues->item[29]->valueStr;
-		$employment_status = $job->flexValues->item[30]->valueStr;
-		$req_owner = $job->flexValues->item[31]->valueStr;
-		$business_unit = $job->flexValues->item[33]->valueStr;
-		$travel = $job->flexValues->item[36]->valueStr;
-		$hiring_manager_phone = $job->flexValues->item[38]->valueStr;
-		$hiring_manager_email = $job->flexValues->item[37]->valueStr;
-		$hiring_manager_name = $job->flexValues->item[39]->valueStr;
+		$job_category = $this->agt_find_object($job->flexValues->item, "Job Category");
+		$wage_currency = $this->agt_find_object($job->flexValues->item, "Wage Currency");
+		$relocation = $this->agt_find_object($job->flexValues->item, "Relocation");
+		$supervisory = $this->agt_find_object($job->flexValues->item, "Supervisory");
+		$employment_status = $this->agt_find_object($job->flexValues->item, "Employment Status");
+		$req_owner = $this->agt_find_object($job->flexValues->item, "Main Req Owner");
+		$business_unit = $this->agt_find_object($job->flexValues->item, "Global Business Unit");
+		$travel = $this->agt_find_object($job->flexValues->item, "Travel");
+		$hiring_manager_phone = $this->agt_find_object($job->flexValues->item, "Hiring Manager Phone");
+		$hiring_manager_email = $this->agt_find_object($job->flexValues->item, "Hiring Manager email");
+		$hiring_manager_name = $this->agt_find_object($job->flexValues->item, "Hiring Manager Name");
 
 		add_post_meta($post_id, 'agt_req_id', $id, TRUE);
 
