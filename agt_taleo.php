@@ -132,7 +132,7 @@ class Agt_taleo extends TaleoClient {
 		$args = array(
 			'numberposts' => -1,
 			'post_type' => 'job',
-			'meta_key' => 'requisition_id',
+			'meta_key' => 'agt_req_id',
 			'meta_value' => $id
 		);
 
