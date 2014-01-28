@@ -2,7 +2,7 @@
 /**
  * Plugin Name: AGT Taleo Plugin
  * Description: A Wordpress Plugin to manage Job listing in taleo
- * Version: 1.0
+ * Version: 0.2.0
  * Author: Sean Corgan
  * Author URI:  
  */
@@ -25,7 +25,9 @@ class Agt_taleo extends TaleoClient {
 		endif; 
 
 		add_action( 'admin_enqueue_scripts', array($this, 'enqueue_scripts'));
+
 		add_action( 'wp_ajax_manually_sync_jobs', array($this, 'manually_sync_jobs'));
+		add_action( 'wp_ajax_agt_save_workflow', array($this, 'agt_save_workflow'));
 
 		add_filter('wpcf7_hidden_field_value_reqId', array($this, 'agt_job_req_id'));
 		add_filter('query_vars', array($this, 'agt_add_to_query_var'));
@@ -36,9 +38,27 @@ class Agt_taleo extends TaleoClient {
 
 	}
 	/**
+	 * Saves Order and User id's for emailing workflow. 
+	 * @return json - success with message or error
+	 * @todo this should have a Nonce for security 
+	 */
+	public function agt_save_workflow()
+	{	
+
+		$assigned_users = serialize($_POST['sortedIDs']);
+
+		if(update_option('assigned_users', $assigned_users)) { 
+			echo json_encode(array('status' => 'success', 'message' => 'Workflow updated')); 
+		} else { 
+			echo json_encode(array('status' => 'error')); 
+		}
+
+	    die();
+	}
+
+	/**
 	* Send Job canidate to Taleo on job application form submission
 	*/
-
 	function agt_before_applications_sent(&$wpcf7_data) {  
  
 		   	$canidate_data = array('email' => $wpcf7_data->posted_data['email'], 
@@ -75,10 +95,17 @@ class Agt_taleo extends TaleoClient {
 	    }
 	        
 		wp_enqueue_script( 'ajax-script', plugins_url( '/js/scripts.js', __FILE__ ), array('jquery') );
-
+		wp_enqueue_script( 'jquery-ui-core');
 		wp_localize_script( 'ajax-script', 'ajax_object',
 	            array( 'ajax_url' => admin_url( 'admin-ajax.php' )) );
-	}
+
+		wp_enqueue_style('agt_taleo-admin-ui-css',
+                'http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.4/themes/ui-lightness/jquery-ui.min.css',false);
+		
+
+		wp_enqueue_style('agt_taleo-styles',
+                 plugins_url( '/css/style.css', __FILE__ ));
+		}
 
 	/**
 	* updates hidden field for contact form 7
@@ -163,8 +190,52 @@ class Agt_taleo extends TaleoClient {
 		return $object->valueStr; 
 	}
 
+
 	/**
-	* Adds Job 
+	 * Send notification to user if they are the first person 
+	 * assigned to approve, but have not yet approved the post 
+	 * @param int $post_id the job post id. 
+	 */
+	function agt_notification_workflow($post_id) { 
+		$assigned_users = unserialize(get_option('assigned_users'));
+
+
+		if(!empty($assigned_users)): 
+			foreach ($assigned_users as $user_id) {
+				if(!$this->agt_has_user_approved($user_id, $post_id)) { 
+					
+					$user = get_userdata($user_id);
+
+					$message = "A new job posting is awaiting your approval";
+					$to = $user->user_email; 
+
+					$subject = "A new job posting is awaiting your approval"; 
+					wp_mail( $to, $subject, $message);
+					return; 
+				} 
+			}
+		endif; 
+		
+	}
+
+	/**
+	 * Checks if user approved this post already 
+	 * @param  int  $id Id of user
+	 * @return boolean     true if they have approved, flase if not. 
+	 */
+	function agt_has_user_approved($user_id, $post_id) { 
+		$approval_status = get_post_meta($post_id, 'agt_approval_status_'.$user_id); 
+
+		if($approval_status == "approved") { 
+			return true; 
+		} else { 
+			return false; 
+		}
+	}
+
+
+	/**
+	* Adds Job as a custom post type. 
 	* @param $id string - the requisition ID of the job  
 	*/
 	function add_job($id) { 
@@ -181,6 +252,9 @@ class Agt_taleo extends TaleoClient {
 
 		// add post 
 	 	$post_id = wp_insert_post( $my_post); 
+
+	 	// Notify Workflow;  
+	 	$this->agt_notification_workflow($post_id); 
 		
 		$job_type = $this->agt_find_object($job->flexValues->item, "jobType"); 
 
@@ -423,9 +497,54 @@ class Agt_taleo extends TaleoClient {
 			</div>
 			<button id="sync-jobs" class="button button-primary">Add New Jobs</button>
 
+				
 			<div style="display:none" id="loading-icon"><img src="<?php echo site_url(); ?>/wp-includes/js/tinymce/themes/advanced/skins/default/img/progress.gif"/></div>
+			
+			<hr>
 
+		<div class="agt-workflow">
+		<h3>Taleo Job Approval Flow</h3>
 		<?php 
+
+			$users = get_users();
+			$assigned_users = unserialize(get_option('assigned_users'));
+
+
+				echo "<div class='user-list left'>"; 
+				echo "<h4>Users</h4>"; 
+				echo "<ul id='sortable1' class='sortable'>"; 
+				if(!empty($users)): 
+					foreach ($users as $user) {
+						if(!in_array($user->data->ID, $assigned_users)) {  
+							echo "<li class='ui-state-default' id='".$user->data->ID."'><span class='ui-icon ui-icon-arrowthick-2-n-s'></span><span class='text'>".$user->data->user_nicename."</span></li>"; 
+						}
+					}
+				endif; 
+				echo "</ul>"; 
+				echo "</div>"; 
+
+		
+
+				
+			
+				echo "<div class='user-list left'>"; 
+				echo "<h4>Job Approval Workflow</h4>";
+
+				echo "<ul id='sortable2' class='sortable'>"; 
+				if(!empty($assigned_users)): 
+					foreach ($assigned_users as $user_id) {
+						$user = get_userdata( $user_id );
+						echo "<li class='ui-state-default' id='".$user->ID."'><span class='ui-icon ui-icon-arrowthick-2-n-s'></span><span class='text'>".$user->user_nicename."</span></li>"; 
+					}
+				endif; 
+				echo "</ul>"; 
+				echo "</div>"; 
+
+				?> 
+				<button id="save-workflow" class="button button-primary">Save Workflow</button>
+				<div style="display:none" id="loading-icon"><img src="<?php echo site_url(); ?>/wp-includes/js/tinymce/themes/advanced/skins/default/img/progress.gif"/></div>		
+			</div>
+				<?php 
 	}
 
 	/**

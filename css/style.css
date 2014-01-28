@@ -1,0 +1,21 @@
+.sortable { list-style-type: none; margin: 0; padding: 0; min-height: 50px; }
+.sortable li { margin: 0 3px 3px 3px; padding: 0.4em; padding-left: 1.5em; font-size: 1.4em; height: 18px; }
+.sortable li span { position: absolute; margin-left: -1.3em; }
+.sortable li span.text { 
+	margin-left: 0; 
+}
+
+
+.user-list { 
+	padding: 10px;
+	border: 1px dotted #ccc; 
+	width: 30%; 
+	display: inline-block;
+	margin-right: 25px; 
+}
+
+
+#save-workflow { 
+	display: block; 
+	margin-top: 15px; 
+}
