@@ -2,14 +2,13 @@
 /**
  * Plugin Name: AGT Taleo Plugin
  * Description: A Wordpress Plugin to manage Job listing in taleo
- * Version: 0.2.0
+ * Version: 0.3.0
  * Author: Sean Corgan
  * Author URI:  
  */
 require_once('taleo.class.php'); 
 
 // @todo - enable/disable contact form 7 integration in settings panel 
-
 class Agt_taleo extends TaleoClient {
 	
 	function __construct() {
@@ -28,16 +27,80 @@ class Agt_taleo extends TaleoClient {
 
 		add_action( 'wp_ajax_manually_sync_jobs', array($this, 'manually_sync_jobs'));
 		add_action( 'wp_ajax_agt_save_workflow', array($this, 'agt_save_workflow'));
+		add_action( 'wp_ajax_agt_approve_job', array($this, 'agt_approve_job'));
 
 		add_filter('wpcf7_hidden_field_value_reqId', array($this, 'agt_job_req_id'));
 		add_filter('query_vars', array($this, 'agt_add_to_query_var'));
-
+		add_action( 'add_meta_boxes', array( $this, 'agt_add_metabox' ) );
 
 		// un-commet this to send job applications to Taleo
 		// add_action("wpcf7_before_send_mail", array($this, "agt_before_applications_sent"));  
 
 	}
+
 	/**
+	 * Updates user approval status
+	 * @return json success or failure
+	 */
+	public function agt_approve_job() {	
+		$user_ID = get_current_user_id(); 
+		$approval_status = $this->agt_has_user_approved($user_ID, $_POST['id']);  
+
+		if(add_post_meta( $_POST['id'], 'agt_approval_status_'.$user_ID, 'approved', true)) { 
+			echo json_encode(array('status' => 'success', 'message' => 'Workflow updated')); 
+		} else { 
+			echo json_encode(array('status' => 'error')); 
+		}
+
+		// Send next notification
+		$this->agt_notification_workflow($_POST['id'], $_POST['job_title']); 
+
+	    die();
+	}
+
+	/**
+	 * Adds metaboxes for job post type 
+	 * @param  string $post_type The post type passed in the URL 
+	 */
+	function agt_add_metabox($post_type) { 
+            if($post_type == 'job'){ 
+            	add_meta_box('agt_workflow_approval', 'Job Publishing Approval', array($this, 'agt_workflow_approval_box'), 'job', 'side', 'default');
+            }
+	}
+
+	/**
+	 * Outputs Approval Box, to approve job
+	 * @param  object $post the post object
+	 */
+	function agt_workflow_approval_box($post) { 
+		$assigned_users = unserialize(get_option('assigned_users'));
+		$current_user_id = get_current_user_id();
+
+		if(!empty($assigned_users)) { 
+
+			if(in_array($current_user_id, $assigned_users)) { 
+				if(!$this->agt_has_user_approved($current_user_id, $post->ID)) { 
+					echo '<button data-id="'.$post->ID.'" data-title="'.$post->post_title.'" id="approve-job" class="button-primary">Approve Job</button>'; 
+				}
+			}
+
+			foreach ($assigned_users as $user_id) {
+				$user = get_userdata( $user_id);
+				echo '<ul class="user_approvals">'; 
+				if($this->agt_has_user_approved($user_id, $post->ID)) { 
+					echo '<li class="approved">'.$user->user_nicename.' Approved<li>';
+				} else { 
+					echo '<li class="not-approved">'.$user->user_nicename.' Awaiting Approval<li>'; 
+				}
+				
+			}
+
+			
+		}
+
+	}
+
+	 /**
 	 * Saves Order and User id's for emailing workflow. 
 	 * @return json - success with message or error
 	 * @todo this should have a Nonce for security 
@@ -89,23 +152,26 @@ class Agt_taleo extends TaleoClient {
 	* Enques javascript and styles 
 	*/ 
 	function enqueue_scripts($hook) {
-    if( 'settings_page_agt-taleo' != $hook ) {
-		// Only applies to dashboard panel
-		return;
-	    }
-	        
-		wp_enqueue_script( 'ajax-script', plugins_url( '/js/scripts.js', __FILE__ ), array('jquery') );
-		wp_enqueue_script( 'jquery-ui-core');
-		wp_localize_script( 'ajax-script', 'ajax_object',
+	    
+		if($hook == 'settings_page_agt-taleo' || $hook === 'post.php') { 
+			wp_enqueue_style('agt_taleo-styles', plugins_url( '/css/style.css', __FILE__ ));
+			wp_enqueue_script( 'ajax-script', plugins_url( '/js/scripts.js', __FILE__ ), array('jquery') );
+			wp_enqueue_script( 'jquery-ui-core');
+			wp_localize_script( 'ajax-script', 'ajax_object',
 	            array( 'ajax_url' => admin_url( 'admin-ajax.php' )) );
+		} 
+
+	    if( 'settings_page_agt-taleo' != $hook ) {
+			// Only applies to dashboard panel
+			return;
+		}
+	        
+		
 
 		wp_enqueue_style('agt_taleo-admin-ui-css',
                 'http://ajax.aspnetcdn.com/ajax/jquery.ui/1.10.4/themes/ui-lightness/jquery-ui.min.css',false);
-		
-
-		wp_enqueue_style('agt_taleo-styles',
-                 plugins_url( '/css/style.css', __FILE__ ));
-		}
+	
+	}
 
 	/**
 	* updates hidden field for contact form 7
@@ -195,10 +261,10 @@ class Agt_taleo extends TaleoClient {
 	 * Send notification to user if they are the first person 
 	 * assigned to approve, but have not yet approved the post 
 	 * @param int $post_id the job post id. 
+	 * @param string $job_title The job title
 	 */
-	function agt_notification_workflow($post_id) { 
+	function agt_notification_workflow($post_id, $job_title) { 
 		$assigned_users = unserialize(get_option('assigned_users'));
-
 
 		if(!empty($assigned_users)): 
 			foreach ($assigned_users as $user_id) {
@@ -206,16 +272,22 @@ class Agt_taleo extends TaleoClient {
 					
 					$user = get_userdata($user_id);
 
-					$message = "A new job posting is awaiting your approval";
+					$message = $job_title."  is awaiting your approval \r\n";
+					$message .= "To approve Please Visit: ".site_url('/wp-admin/post.php?post='.$post_id.'&action=edit');
 					$to = $user->user_email; 
 
-					$subject = "A new job posting is awaiting your approval"; 
-					wp_mail( $to, $subject, $message);
+					$subject = $job_title." is awaiting your approval"; 
+					wp_mail( $to, $subject, $message, "Content-type: text/html");
 					return; 
 				} 
 			}
+
+			// No one left to approve change status to approve. 
+			$job = array('post_status' => 'publish', 'ID' => $post_id); 
+			
+			wp_update_post( $job );
+			
 		endif; 
-		
 	}
 
 	/**
@@ -226,7 +298,7 @@ class Agt_taleo extends TaleoClient {
 	function agt_has_user_approved($user_id, $post_id) { 
 		$approval_status = get_post_meta($post_id, 'agt_approval_status_'.$user_id); 
 
-		if($approval_status == "approved") { 
+		if($approval_status[0] == "approved") { 
 			return true; 
 		} else { 
 			return false; 
@@ -245,7 +317,7 @@ class Agt_taleo extends TaleoClient {
 		 $my_post = array(
 		  'post_title'    => $job->title,
 		  'post_content'  => $job->description,
-		  'post_status'   => 'publish',
+		  'post_status'   => 'pending',
 		  'post_type' => 'job',
 		  'post_author'   => 1
 		);
@@ -254,7 +326,7 @@ class Agt_taleo extends TaleoClient {
 	 	$post_id = wp_insert_post( $my_post); 
 
 	 	// Notify Workflow;  
-	 	$this->agt_notification_workflow($post_id); 
+	 	$this->agt_notification_workflow($post_id, $job->title); 
 		
 		$job_type = $this->agt_find_object($job->flexValues->item, "jobType"); 
 
@@ -524,9 +596,6 @@ class Agt_taleo extends TaleoClient {
 				echo "</div>"; 
 
 		
-
-				
-			
 				echo "<div class='user-list left'>"; 
 				echo "<h4>Job Approval Workflow</h4>";
 

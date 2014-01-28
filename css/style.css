@@ -19,3 +19,21 @@
 	display: block; 
 	margin-top: 15px; 
 }
+
+#agt_workflow_approval .inside .user_approvals li { 
+	text-transform: capitalize;
+}
+
+#agt_workflow_approval .inside .user_approvals li.not-approved { 
+	border: 1px solid #ddd;
+	padding: 6px; 
+	background: rgb(252, 248, 227);
+}
+
+#agt_workflow_approval .inside .user_approvals li.approved { 
+	border: 1px solid #ddd;
+	padding: 6px; 
+	background: rgb(223, 240, 216);
+}
+
+

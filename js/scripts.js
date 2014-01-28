@@ -45,11 +45,30 @@ jQuery(document).ready(function($) {
 
 		jQuery.post(ajax_object.ajax_url, data, function(response) {
 				$('#save-workflow').show(); 
-				$('.agt-workflow #loading-icon').hide(); 
-				$('.agt-workflow #message').html(response.message);  
+				$('.agt-workflow #loading-icon').hide();  
 				window.setTimeout(function() { 
 					$('.agt-workflow #message').hide(); 
 				},1500); 
+		}, "json");
+	})
+
+
+	$('#approve-job').on('click', function(e) {
+		e.preventDefault(); 
+		var data = {
+			action: 'agt_approve_job', 
+			post_title: $(this).data('title'), 
+			id: $(this).data('id')
+		};
+		console.log(ajax_object); 
+		$(this).hide(); 
+		//$('.agt-workflow #loading-icon').show(); 
+
+		jQuery.post(ajax_object.ajax_url, data, function(response) {
+				if(response.status == "success"){
+					location.reload();
+				}
+				
 		}, "json");
 	})
 
