@@ -1,4 +1,4 @@
-<?php
+<?php 
 class TaleoClient {
 
   protected $companyid,
@@ -47,6 +47,7 @@ class TaleoClient {
   
   public function createCandidate($candidate, $source = 'Careers Website') {
     try {
+ 
 
       $education = 'Educational Institute: '. (($candidate->education != 'Other') ?
                                                 $candidate->education :
@@ -57,7 +58,6 @@ class TaleoClient {
       $willingToRelocate = 'Willing to Relocate: '. $candidate->willingToRelocate;
       $salaryDenomination = 'Salary Denomination: '. $candidate->otherSalaryDenomination;
       $summary = implode("\n\n", array($education, $additionalLanguages, $willingToRelocate, $geography, $functionalGroup, $salaryDenomination));
-      
 
       $candidateID = $this->client->createCandidate($this->sessionid, array(
         'status' => 'NEW',
@@ -130,9 +130,10 @@ class TaleoClient {
                             $candidate->availability : $candidate->availabilityOther),
           ),
         )));
+
       } catch (Exception $e) {
         $this->saveLastRequest();
-        throw $e;
+        throw $e->getMessage();
       }
       
       $this->saveLastRequest();

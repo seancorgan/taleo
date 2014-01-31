@@ -34,7 +34,7 @@ class Agt_taleo extends TaleoClient {
 		add_action( 'add_meta_boxes', array( $this, 'agt_add_metabox' ) );
 
 		// un-commet this to send job applications to Taleo
-		// add_action("wpcf7_before_send_mail", array($this, "agt_before_applications_sent"));  
+		add_action("wpcf7_before_send_mail", array($this, "agt_before_applications_sent"));  
 
 	}
 
@@ -122,8 +122,24 @@ class Agt_taleo extends TaleoClient {
 	/**
 	* Send Job canidate to Taleo on job application form submission
 	*/
-	function agt_before_applications_sent(&$wpcf7_data) {  
- 
+	function agt_before_applications_sent(&$wpcf7_data) {
+			$company_id = get_option('company_id');
+			$username = get_option('username');
+			$password = get_option('password');
+
+			if(empty($company_id) || empty($username) || empty($password)) { 
+				throw new Exception("Taleo Credentials Must be Set", 1);
+			}
+
+			parent::__construct($company_id, $username, $password, realpath(dirname(__FILE__)).'/DispatcherAPI.wsdl', realpath(dirname(__FILE__)).'/WebAPI.wsdl'); 
+ 			
+ 			echo "<pre>"; 
+ 			var_dump($wpcf7_data->posted_data['reqId']);
+ 			echo "</pre>";  
+
+		   	die();
+
+
 		   	$canidate_data = array('email' => $wpcf7_data->posted_data['email'], 
 		   						   'lastName' => $wpcf7_data->posted_data['last_name'], 
 		   						   'firstName' => $wpcf7_data->posted_data['email'], 
@@ -145,8 +161,13 @@ class Agt_taleo extends TaleoClient {
 		   						   'availability' => $wpcf7_data->posted_data['starting'],
 		   						   'availabilityOther' => $wpcf7_data->posted_data['referral_source']);
 
-		   	$canidate_obj = (object) $canidate_data; 
-		   	$canidate_id = $this->createCandidate($canidate_obj);
+		   	$canidate_obj = (object) $canidate_data;
+   
+		   	$canidate_id = $this->createCandidate($canidate_obj); 
+
+		   	if(empty($canidate_id)) { 
+		   		throw new Exception("Problem creating canidate", 1);
+		   	}
 	}  
 	/**
 	* Enques javascript and styles 
@@ -634,6 +655,7 @@ class Agt_taleo extends TaleoClient {
 		$password = get_option('password');
 
 		if(empty($company_id) || empty($username) || empty($password)) { 
+
 			add_action( 'admin_notices', array($this, 'settings_missing_message') );
 		} else {  
 			parent::__construct($company_id, $username, $password, realpath(dirname(__FILE__)).'/DispatcherAPI.wsdl', realpath(dirname(__FILE__)).'/WebAPI.wsdl'); 
