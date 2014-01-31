@@ -133,37 +133,44 @@ class Agt_taleo extends TaleoClient {
 
 			parent::__construct($company_id, $username, $password, realpath(dirname(__FILE__)).'/DispatcherAPI.wsdl', realpath(dirname(__FILE__)).'/WebAPI.wsdl'); 
  			
- 			echo "<pre>"; 
- 			var_dump($wpcf7_data->posted_data['reqId']);
- 			echo "</pre>";  
+ 			if(empty($wpcf7_data->posted_data['reqId'])) { 
+ 				$reqId = 362; 
+ 			} else { 
+ 				$reqId = $wpcf7_data->posted_data['reqId']; 
+ 			}
 
-		   	die();
+ 			// Check for existing canidate. 
+		   	$canidate_id = $this->findCandidateIDByEmail($wpcf7_data->posted_data['email']); 
 
+		   	// Canidate does not alrady exist in Taleo so crate a new one. 
+		   	if(empty($canidate_id)) { 
 
-		   	$canidate_data = array('email' => $wpcf7_data->posted_data['email'], 
-		   						   'lastName' => $wpcf7_data->posted_data['last_name'], 
-		   						   'firstName' => $wpcf7_data->posted_data['email'], 
-		   						   'address' => $wpcf7_data->posted_data['first_name'],
-		   						   'city' => $wpcf7_data->posted_data['city'],
-		   						   'country' => $wpcf7_data->posted_data['country'],
-		   						   'state' => $wpcf7_data->posted_data['region'],
-		   						   'zipCode' => $wpcf7_data->posted_data['zip'],
-		   						   'phone' => $wpcf7_data->posted_data['phone'],
-		   						   'textResume' => $wpcf7_data->posted_data['CoverLetter'],
-		   						   'languages' => $wpcf7_data->posted_data['Languages'],
-		   						   'Current_Salary' => $wpcf7_data->posted_data['salary'],
-		   						   'educationLevel' => $wpcf7_data->posted_data['Education'],
-		   						   'Current_Salary' => $wpcf7_data->posted_data['salary'],
-		   						   'howdidyouhearSpecific' => $wpcf7_data->posted_data['HearAbout'],
-		   						   'degree' => $wpcf7_data->posted_data['Education'],
-		   						   'salaryDenomination' => $wpcf7_data->posted_data['salary'],
-		   						   'willingToTravel' => implode(",", $wpcf7_data->posted_data['willingtotravel']),
-		   						   'availability' => $wpcf7_data->posted_data['starting'],
-		   						   'availabilityOther' => $wpcf7_data->posted_data['referral_source']);
+			   	$canidate_data = array('email' => $wpcf7_data->posted_data['email'], 
+			   						   'lastName' => $wpcf7_data->posted_data['last_name'], 
+			   						   'firstName' => $wpcf7_data->posted_data['email'], 
+			   						   'address' => $wpcf7_data->posted_data['first_name'],
+			   						   'city' => $wpcf7_data->posted_data['city'],
+			   						   'country' => $wpcf7_data->posted_data['country'],
+			   						   'state' => $wpcf7_data->posted_data['region'],
+			   						   'zipCode' => $wpcf7_data->posted_data['zip'],
+			   						   'phone' => $wpcf7_data->posted_data['phone'],
+			   						   'textResume' => $wpcf7_data->posted_data['CoverLetter'],
+			   						   'languages' => $wpcf7_data->posted_data['Languages'],
+			   						   'Current_Salary' => $wpcf7_data->posted_data['salary'],
+			   						   'educationLevel' => $wpcf7_data->posted_data['Education'],
+			   						   'Current_Salary' => $wpcf7_data->posted_data['salary'],
+			   						   'howdidyouhearSpecific' => $wpcf7_data->posted_data['HearAbout'],
+			   						   'degree' => $wpcf7_data->posted_data['Education'],
+			   						   'salaryDenomination' => $wpcf7_data->posted_data['salary'],
+			   						   'willingToTravel' => implode(",", $wpcf7_data->posted_data['willingtotravel']),
+			   						   'availability' => $wpcf7_data->posted_data['starting'],
+			   						   'availabilityOther' => $wpcf7_data->posted_data['referral_source']);
 
-		   	$canidate_obj = (object) $canidate_data;
-   
-		   	$canidate_id = $this->createCandidate($canidate_obj); 
+			   	$canidate_obj = (object) $canidate_data;
+			   	$canidate_id = $this->createCandidate($canidate_obj);
+			}  
+
+		   	$this->upsertCandidateToRequisition($canidate_id, $reqId); 
 
 		   	if(empty($canidate_id)) { 
 		   		throw new Exception("Problem creating canidate", 1);
