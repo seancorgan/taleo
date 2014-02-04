@@ -14,9 +14,16 @@ class Agt_taleo extends TaleoClient {
 	
 	function __construct() {
 		register_activation_hook( __FILE__, array( $this, 'agt_rewrite_flush') );
+
+
+		register_deactivation_hook( __FILE__, array($this, 'agt_deactivate') );
+
 		add_action( 'init', array( $this, 'agt_register_jobs_post_type') );
 
 		add_action( 'init', array( $this, 'agt_register_job_taxonomies') );
+
+		add_action( 'init', array( $this, 'agt_setup_resume_paths') );
+
 
 		add_action( 'admin_menu', array( $this, 'agt_plugin_menu') );
 
@@ -35,8 +42,22 @@ class Agt_taleo extends TaleoClient {
 		add_action( 'add_meta_boxes', array( $this, 'agt_add_metabox' ) );
 
 		// un-commet this to send job applications to Taleo
-		add_action("wpcf7_before_send_mail", array($this, "agt_before_applications_sent"));  
+		add_action("wpcf7_before_send_mail", array($this, "agt_before_applications_sent"));
 
+	}
+
+	/**
+	 * adds path for uploading temp resumes. 
+	 */
+	function agt_setup_resume_paths() { 
+		// Adds path to upload temp resume files.
+		$resume_path = plugin_dir_path(__FILE__).'resumes/';
+
+		if (!file_exists($resume_path)) {
+		    mkdir($resume_path, 0777, true);
+		 }
+
+		define( 'WPCF7_UPLOADS_TMP_DIR', $resume_path );
 	}
 
 	/**
@@ -122,8 +143,14 @@ class Agt_taleo extends TaleoClient {
 
 	/**
 	* Send Job canidate to Taleo on job application form submission
+	* @todo Need to ask @elliot about how Resume's are being passed to Taleo.   
 	*/
 	function agt_before_applications_sent(&$wpcf7_data) {
+			// only fire for Application for employment. 
+			if($wpcf7_data->title != "Application for Employment") { 
+				return; 
+			}
+
 			$company_id = get_option('company_id');
 			$username = get_option('username');
 			$password = get_option('password');
@@ -567,6 +594,13 @@ class Agt_taleo extends TaleoClient {
 	function agt_rewrite_flush() {
     	$this->agt_register_jobs_post_type();
     	flush_rewrite_rules();
+	}
+
+	/**
+	 * 
+	 */
+	function agt_deactivate() {
+		flush_rewrite_rules();
 	}
 
 	/**
