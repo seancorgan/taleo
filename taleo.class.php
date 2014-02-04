@@ -186,6 +186,9 @@ class TaleoClient {
         if ($require_already_approved) {
           $ret = $this->client->searchRequisition($this->sessionid, array($property => 'true', 'status' => 'Open', 'IsApprovedForWebsite' => 'true'));
         }
+        else {
+          $ret = $this->client->searchRequisition($this->sessionid, array($property => 'true', 'status' => 'Open'));
+        }
     }
     catch (Exception $e) {
       $this->saveLastRequest();

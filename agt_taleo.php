@@ -7,6 +7,7 @@
  * Author URI:  
  */
 require_once('taleo.class.php'); 
+require_once('htmlpurifier/HTMLPurifier.standalone.php');
 
 // @todo - enable/disable contact form 7 integration in settings panel 
 class Agt_taleo extends TaleoClient {
@@ -226,7 +227,7 @@ class Agt_taleo extends TaleoClient {
 	*/
 	function manually_sync_jobs() {
 		global $wpdb;
-		$jobs = $this->findRequisitionsForPublishing("", TRUE);
+		$jobs = $this->findRequisitionsForPublishing();
 		$job_count = 0; 
 		if(!empty($jobs)):
 			foreach ($jobs as $job) {
@@ -342,9 +343,30 @@ class Agt_taleo extends TaleoClient {
 
  		$job = $this->getRequisitionById($id);
 
+
+		$body_value = $this->agt_find_object($job->flexValues->item, 'Job Description Thumbnail');
+		if (!$body_value) {
+			$body_value = $job->description;
+		}
+
+		$config = HTMLPurifier_Config::createDefault();
+		//$config->set('AutoFormat.RemoveEmpty.RemoveNbsp', true);
+		$config->set('AutoFormat.RemoveEmpty', true);
+		//$config->set('AutoFormat.RemoveSpansWithoutAttributes', true);
+		$config->set('HTML.AllowedAttributes', array('a.href'));
+		$config->set('HTML.AllowedElements', array('div', 'ul', 'ol', 'li', 'p', 'a', 'h2', 'br'));
+		$config->set('CSS.AllowedFonts', array('Arial','sans-serif'));
+		$config->set('CSS.AllowedProperties', array('cursor'));
+		$purifier = new HTMLPurifier($config);
+		
+		$body_value = preg_replace('/(&nbsp;)+/', ' ', $body_value);
+		$body_value = preg_replace('/ +/', ' ', $body_value);
+		$body_value = str_replace('\xC2\xA0', ' ', $body_value);
+		$body_value = $purifier->purify($body_value);
+
 		 $my_post = array(
 		  'post_title'    => $job->title,
-		  'post_content'  => $job->description,
+		  'post_content'  => $body_value,
 		  'post_status'   => 'pending',
 		  'post_type' => 'job',
 		  'post_author'   => 1
@@ -474,8 +496,8 @@ class Agt_taleo extends TaleoClient {
 	            'all_items' => __( 'All Jobs', 'Job' ),
 	            'view_item' => __( 'View Job', 'Job' ),
 	            'search_items' => __( 'Search Jobs', 'Job' ),
-	            'not_found' =>  __( 'No Job found', 'news' ),
-	            'not_found_in_trash' => __( 'No Job found in Trash', 'news' ),
+	            'not_found' =>  __( 'No Job found', 'Job' ),
+	            'not_found_in_trash' => __( 'No Job found in Trash', 'Job' ),
 	            'parent_item_colon' => '',
 	            'menu_name' => 'Jobs'
 	        )
