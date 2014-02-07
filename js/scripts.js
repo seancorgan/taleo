@@ -18,7 +18,6 @@ jQuery(document).ready(function($) {
 		$('#loading-icon').show(); 
 
 		jQuery.post(ajax_object.ajax_url, data, function(response) {
-				console.log(response.message);
 				$('#sync-jobs').show(); 
 				$('#loading-icon').hide(); 
 				$('#message').html(response.message);  
@@ -60,7 +59,6 @@ jQuery(document).ready(function($) {
 			post_title: $(this).data('title'), 
 			id: $(this).data('id')
 		};
-		console.log(ajax_object); 
 		$(this).hide(); 
 		//$('.agt-workflow #loading-icon').show(); 
 

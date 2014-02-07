@@ -162,7 +162,7 @@ class Agt_taleo extends TaleoClient {
 			parent::__construct($company_id, $username, $password, realpath(dirname(__FILE__)).'/DispatcherAPI.wsdl', realpath(dirname(__FILE__)).'/WebAPI.wsdl'); 
  			
  			if(empty($wpcf7_data->posted_data['reqId'])) { 
- 				$reqId = 362; 
+ 				$reqId = 930; 
  			} else { 
  				$reqId = $wpcf7_data->posted_data['reqId']; 
  			}
@@ -175,8 +175,8 @@ class Agt_taleo extends TaleoClient {
 
 			   	$canidate_data = array('email' => $wpcf7_data->posted_data['email'], 
 			   						   'lastName' => $wpcf7_data->posted_data['last_name'], 
-			   						   'firstName' => $wpcf7_data->posted_data['email'], 
-			   						   'address' => $wpcf7_data->posted_data['first_name'],
+			   						   'firstName' => $wpcf7_data->posted_data['first_name'], 
+			   						   'address' => $wpcf7_data->posted_data['address'],
 			   						   'city' => $wpcf7_data->posted_data['city'],
 			   						   'country' => $wpcf7_data->posted_data['country'],
 			   						   'state' => $wpcf7_data->posted_data['region'],
@@ -198,11 +198,15 @@ class Agt_taleo extends TaleoClient {
 			   	$canidate_id = $this->createCandidate($canidate_obj);
 			}  
 
-		   	$this->upsertCandidateToRequisition($canidate_id, $reqId); 
-
 		   	if(empty($canidate_id)) { 
 		   		throw new Exception("Problem creating canidate", 1);
 		   	}
+
+		   	$this->upsertCandidateToRequisition($canidate_id, $reqId); 
+			if (isset($wpcf7_data->uploaded_files['resume'])) {
+				$this->setBinaryResume($canidate_id, basename($wpcf7_data->uploaded_files['resume']), file_get_contents($wpcf7_data->uploaded_files['resume']));
+			}
+
 	}  
 	/**
 	* Enques javascript and styles 
@@ -254,10 +258,13 @@ class Agt_taleo extends TaleoClient {
 	*/
 	function manually_sync_jobs() {
 		global $wpdb;
+		header('Content-type: application/json; charset=utf-8');
 		$jobs = $this->findRequisitionsForPublishing();
 		$job_count = 0; 
+		$allRequisitionIds = [];
 		if(!empty($jobs)):
 			foreach ($jobs as $job) {
+				$allRequisitionIds[] = $job->id;
 			 	if(!$this->check_if_job_in_system($job->id)): 
 			 		$this->add_job($job->id);
 			 		$job_count++;  
@@ -268,6 +275,30 @@ class Agt_taleo extends TaleoClient {
 			echo json_encode(array("status" => "success", "message" => "Jobs Successfuly Added")); 
 		} else { 
 			echo json_encode(array("status" => "success", "message" => "No New Jobs Added."));
+		}
+
+
+		if ($allRequisitionIds) {
+			$args = array(
+				'numberposts' => -1,
+				'post_type' => 'job',
+				'meta_query' => array(
+					array(
+						'key' => 'agt_req_id',
+						'value' => $allRequisitionIds,
+						'compare' => 'NOT IN',
+					),
+				),
+			);
+
+			$the_query = new WP_Query( $args );
+			
+			if ( $the_query->have_posts() ) {
+				while ( $the_query->have_posts() ) {
+					$the_query->next_post();
+					wp_delete_post( $the_query->post->ID );
+				}
+			}
 		}
 		die();
 	}
