@@ -7,14 +7,13 @@
  * Author URI:  
  */
 require_once('taleo.class.php'); 
-require_once('htmlpurifier/HTMLPurifier.standalone.php');
+require_once('htmlpurifier-4.3.0-standalone/HTMLPurifier.standalone.php');
 
 // @todo - enable/disable contact form 7 integration in settings panel 
 class Agt_taleo extends TaleoClient {
 	
 	function __construct() {
 		register_activation_hook( __FILE__, array( $this, 'agt_rewrite_flush') );
-
 
 		register_deactivation_hook( __FILE__, array($this, 'agt_deactivate') );
 
@@ -23,7 +22,6 @@ class Agt_taleo extends TaleoClient {
 		add_action( 'init', array( $this, 'agt_register_job_taxonomies') );
 
 		add_action( 'init', array( $this, 'agt_setup_resume_paths') );
-
 
 		add_action( 'admin_menu', array( $this, 'agt_plugin_menu') );
 
@@ -261,7 +259,7 @@ class Agt_taleo extends TaleoClient {
 		header('Content-type: application/json; charset=utf-8');
 		$jobs = $this->findRequisitionsForPublishing();
 		$job_count = 0; 
-		$allRequisitionIds = [];
+		$allRequisitionIds = array();
 		if(!empty($jobs)):
 			foreach ($jobs as $job) {
 				$allRequisitionIds[] = $job->id;
