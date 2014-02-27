@@ -171,26 +171,32 @@ class Agt_taleo extends TaleoClient {
 		   	// Canidate does not alrady exist in Taleo so crate a new one. 
 		   	if(empty($canidate_id)) { 
 
-			   	$canidate_data = array('email' => $wpcf7_data->posted_data['email'], 
-			   						   'lastName' => $wpcf7_data->posted_data['last_name'], 
-			   						   'firstName' => $wpcf7_data->posted_data['first_name'], 
-			   						   'address' => $wpcf7_data->posted_data['address'],
-			   						   'city' => $wpcf7_data->posted_data['city'],
-			   						   'country' => $wpcf7_data->posted_data['country'],
-			   						   'state' => $wpcf7_data->posted_data['region'],
-			   						   'zipCode' => $wpcf7_data->posted_data['zip'],
-			   						   'phone' => $wpcf7_data->posted_data['phone'],
-			   						   'textResume' => $wpcf7_data->posted_data['CoverLetter'],
-			   						   'languages' => $wpcf7_data->posted_data['Languages'],
-			   						   'Current_Salary' => $wpcf7_data->posted_data['salary'],
-			   						   'educationLevel' => $wpcf7_data->posted_data['Education'],
-			   						   'Current_Salary' => $wpcf7_data->posted_data['salary'],
-			   						   'howdidyouhearSpecific' => $wpcf7_data->posted_data['HearAbout'],
-			   						   'degree' => $wpcf7_data->posted_data['Education'],
-			   						   'salaryDenomination' => $wpcf7_data->posted_data['salary'],
-			   						   'willingToTravel' => implode(",", $wpcf7_data->posted_data['willingtotravel']),
-			   						   'availability' => $wpcf7_data->posted_data['starting'],
-			   						   'availabilityOther' => $wpcf7_data->posted_data['referral_source']);
+										$canidate_data = array(
+											'email'                   => $wpcf7_data->posted_data['email'], 
+											'lastName'                => $wpcf7_data->posted_data['last_name'], 
+											'firstName'               => $wpcf7_data->posted_data['first_name'], 
+											'address'                 => $wpcf7_data->posted_data['address'],
+											'city'                    => $wpcf7_data->posted_data['city'],
+											'country'                 => $wpcf7_data->posted_data['country'],
+											'state'                   => $wpcf7_data->posted_data['region'],
+											'zipCode'                 => $wpcf7_data->posted_data['zip'],
+											'phone'                   => $wpcf7_data->posted_data['phone'],
+											'textResume'              => $wpcf7_data->posted_data['CoverLetter'],
+											'languages'               => $wpcf7_data->posted_data['Languages'],
+											'Current_Salary'          => $wpcf7_data->posted_data['salary'],
+											'educationLevel'          => $wpcf7_data->posted_data['Education'],
+											'Current_Salary'          => $wpcf7_data->posted_data['salary'],
+											'howdidyouhearSpecific'   => $wpcf7_data->posted_data['HearAbout'],
+											'degree'                  => $wpcf7_data->posted_data['Education'],
+											'salaryDenomination'      => $wpcf7_data->posted_data['salary'],
+											'willingToTravel'         => implode(",", $wpcf7_data->posted_data['willingtotravel']),
+											'availability'            => $wpcf7_data->posted_data['starting'],
+											'availabilityOther'       => $wpcf7_data->posted_data['referral_source'], 
+											'functionalGroup'         => $wpcf7_data->posted_data['FunctionalGroup'],
+											'willingToRelocate'       => $wpcf7_data->posted_data['relocate'],
+											'otherSalaryDenomination' => $wpcf7_data->posted_data['Denomination'],
+											'geography'               => $wpcf7_data->posted_data['Location']
+			   						   );
 
 			   	$canidate_obj = (object) $canidate_data;
 			   	$canidate_id = $this->createCandidate($canidate_obj);
