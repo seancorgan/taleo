@@ -9,6 +9,7 @@
 require_once('taleo.class.php'); 
 require_once('htmlpurifier-4.3.0-standalone/HTMLPurifier.standalone.php');
 
+
 // @todo - enable/disable contact form 7 integration in settings panel 
 class Agt_taleo extends TaleoClient {
 	
@@ -773,3 +774,7 @@ class Agt_taleo extends TaleoClient {
 }
 
 $taleo = new Agt_taleo(); 
+
+if ( defined( 'WP_CLI' ) && WP_CLI )
+	require_once dirname( __FILE__ ) . '/taleo-wpcli.php';
+
