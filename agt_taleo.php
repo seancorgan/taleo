@@ -26,7 +26,7 @@ class Agt_taleo extends TaleoClient {
 
 		add_action( 'admin_menu', array( $this, 'agt_plugin_menu') );
 
-		if(is_admin()): 
+		if(is_admin() || (defined( 'WP_CLI' ) && WP_CLI) ): 
 			$this->check_for_settings(); 
 		endif; 
 
@@ -266,14 +266,20 @@ class Agt_taleo extends TaleoClient {
 		header('Content-type: application/json; charset=utf-8');
 		$jobs = $this->findRequisitionsForPublishing();
 		$job_count = 0; 
+		$update_count = 0; 
 		$allRequisitionIds = array();
 		if(!empty($jobs)):
 			foreach ($jobs as $job) {
 				$allRequisitionIds[] = $job->id;
-			 	if(!$this->check_if_job_in_system($job->id)): 
+			 	$existing_post_id = $this->check_if_job_in_system($job->id);
+				if ($existing_post_id === FALSE) {
 			 		$this->add_job($job->id);
 			 		$job_count++;  
-			 	endif;
+				} 
+				else {
+			 		$this->add_job($job->id, $existing_post_id);
+			 		$update_count++;  
+				}
 			 } 
 		endif;
 		if($job_count > 1) { 
@@ -324,7 +330,8 @@ class Agt_taleo extends TaleoClient {
 		$the_query = new WP_Query( $args );
 		
 		if( $the_query->have_posts() ):
-			return TRUE; 
+			$the_query->next_post();
+			return $the_query->post->ID; 
 		else: 
 			return FALSE; 
 		endif; 
@@ -402,7 +409,7 @@ class Agt_taleo extends TaleoClient {
 	* Adds Job as a custom post type. 
 	* @param $id string - the requisition ID of the job  
 	*/
-	function add_job($id) { 
+	function add_job($id, $existing_post_id = null) { 
 
  		$job = $this->getRequisitionById($id);
 
@@ -430,13 +437,19 @@ class Agt_taleo extends TaleoClient {
 		 $my_post = array(
 		  'post_title'    => $job->title,
 		  'post_content'  => $body_value,
-		  'post_status'   => 'pending',
+		  'post_status'   => 'publish',
 		  'post_type' => 'job',
 		  'post_author'   => 1
 		);
 
 		// add post 
-	 	$post_id = wp_insert_post( $my_post); 
+		if ($existing_post_id !== null) {
+			$my_post['ID'] = $existing_post_id;
+			$post_id = wp_update_post( $my_post);
+		}
+		else {
+	 		$post_id = wp_insert_post( $my_post); 
+		}
 
 	 	// Notify Workflow;  
 	 	$this->agt_notification_workflow($post_id, $job->title); 
@@ -463,7 +476,7 @@ class Agt_taleo extends TaleoClient {
 		$hiring_manager_email = $this->agt_find_object($job->flexValues->item, "Hiring Manager email");
 		$hiring_manager_name = $this->agt_find_object($job->flexValues->item, "Hiring Manager Name");
 
-		add_post_meta($post_id, 'agt_req_id', $id, TRUE);
+		update_post_meta($post_id, 'agt_req_id', $id, TRUE);
 
 		if(!empty($job_category)): 
 			wp_set_object_terms( $post_id, $job_category, 'function', TRUE );
@@ -475,60 +488,60 @@ class Agt_taleo extends TaleoClient {
 
 
 		if(!empty($job_type)): 
-			 add_post_meta($post_id, 'agt_job_type', $job_type, TRUE);
+			 update_post_meta($post_id, 'agt_job_type', $job_type, TRUE);
 		endif;
 
 		if(!empty($budgeted)): 
-			 add_post_meta($post_id, 'agt_budgeted', $budgeted, TRUE);
+			 update_post_meta($post_id, 'agt_budgeted', $budgeted, TRUE);
 		endif;
 
 		if(!empty($featured_job)): 
-			 add_post_meta($post_id, 'agt_featured_job', $featured_job, TRUE);
+			 update_post_meta($post_id, 'agt_featured_job', $featured_job, TRUE);
 		endif;
 
 		if(!empty($wage_frequency)): 
-			 add_post_meta($post_id, 'agt_wage_frequency', $wage_frequency, TRUE);
+			 update_post_meta($post_id, 'agt_wage_frequency', $wage_frequency, TRUE);
 		endif;
 
 		if(!empty($job_category)): 
-			 add_post_meta($post_id, 'agt_job_category', $job_category, TRUE);
+			 update_post_meta($post_id, 'agt_job_category', $job_category, TRUE);
 		endif;
 
 		if(!empty($wage_currency)): 
-			 add_post_meta($post_id, 'agt_wage_currency', $wage_currency, TRUE);
+			 update_post_meta($post_id, 'agt_wage_currency', $wage_currency, TRUE);
 		endif;
 
 		if(!empty($req_owner)): 
-			 add_post_meta($post_id, 'agt_req_owner', $req_owner, TRUE);
+			 update_post_meta($post_id, 'agt_req_owner', $req_owner, TRUE);
 		endif;
 
 		if(!empty($supervisory)): 
-			 add_post_meta($post_id, 'agt_supervisory', $supervisory, TRUE);
+			 update_post_meta($post_id, 'agt_supervisory', $supervisory, TRUE);
 		endif;
 
 		if(!empty($employment_status)): 
-			 add_post_meta($post_id, 'agt_employment_status', $employment_status, TRUE);
+			 update_post_meta($post_id, 'agt_employment_status', $employment_status, TRUE);
 		endif;
 
 		if(!empty($business_unit)): 
-			 add_post_meta($post_id, 'agt_business_unit', $business_unit, TRUE);
+			 update_post_meta($post_id, 'agt_business_unit', $business_unit, TRUE);
 		endif;
 
 		if(!empty($travel)): 
-			 add_post_meta($post_id, 'agt_travel', $travel, TRUE);
+			 update_post_meta($post_id, 'agt_travel', $travel, TRUE);
 		endif;
 
 
 		if(!empty($hiring_manager_phone)): 
-			 add_post_meta($post_id, 'agt_hiring_manager_phone', $hiring_manager_phone, TRUE);
+			 update_post_meta($post_id, 'agt_hiring_manager_phone', $hiring_manager_phone, TRUE);
 		endif;
 
 		if(!empty($hiring_manager_email)): 
-			 add_post_meta($post_id, 'agt_hiring_manager_email', $hiring_manager_email, TRUE);
+			 update_post_meta($post_id, 'agt_hiring_manager_email', $hiring_manager_email, TRUE);
 		endif;
 
 		if(!empty($hiring_manager_name)): 
-			 add_post_meta($post_id, 'agt_hiring_manager_name', $hiring_manager_name, TRUE);
+			 update_post_meta($post_id, 'agt_hiring_manager_name', $hiring_manager_name, TRUE);
 		endif;
 	}
 
