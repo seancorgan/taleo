@@ -160,10 +160,10 @@ class Agt_taleo extends TaleoClient {
 
 			parent::__construct($company_id, $username, $password, realpath(dirname(__FILE__)).'/DispatcherAPI.wsdl', realpath(dirname(__FILE__)).'/WebAPI.wsdl'); 
  			
- 			if(empty($wpcf7_data->posted_data['reqId'])) { 
+ 			if(empty($_GET['reqId'])) { 
  				$reqId = 930; 
  			} else { 
- 				$reqId = $wpcf7_data->posted_data['reqId']; 
+ 				$reqId = $_GET['reqId'];
  			}
 
  			// Check for existing canidate. 
@@ -272,21 +272,19 @@ class Agt_taleo extends TaleoClient {
 			foreach ($jobs as $job) {
 				$allRequisitionIds[] = $job->id;
 			 	$existing_post_id = $this->check_if_job_in_system($job->id);
+ 				$req = $this->getRequisitionById($job->id);
 				if ($existing_post_id === FALSE) {
-			 		$this->add_job($job->id);
+			 		$this->add_job($req);
 			 		$job_count++;  
 				} 
 				else {
-			 		$this->add_job($job->id, $existing_post_id);
-			 		$update_count++;  
+					if ($this->agt_did_job_change($req, $existing_post_id)) {
+			 			$this->add_job($req, $existing_post_id);
+			 			$update_count++;  
+					}
 				}
 			 } 
 		endif;
-		if($job_count > 1) { 
-			echo json_encode(array("status" => "success", "message" => "Jobs Successfuly Added")); 
-		} else { 
-			echo json_encode(array("status" => "success", "message" => "No New Jobs Added."));
-		}
 
 
 		if ($allRequisitionIds) {
@@ -311,18 +309,20 @@ class Agt_taleo extends TaleoClient {
 				}
 			}
 		}
+		echo json_encode(array("status" => "success", "message" => "$update_count jobs updated and $job_count jobs added.")); 
 		die();
 	}
 
 	/**
 	* Checks to see if this job is already in wordpress
 	* @param $id string - the requisition ID of the job 
-	* @return bool - true if it exists false if it dont. 
+	* @return int|bool - the post id if it exists, otherwise false
 	*/
 	function check_if_job_in_system($id) { 
 		$args = array(
 			'numberposts' => -1,
 			'post_type' => 'job',
+			'post_status' => 'publish',
 			'meta_key' => 'agt_req_id',
 			'meta_value' => $id
 		);
@@ -404,16 +404,16 @@ class Agt_taleo extends TaleoClient {
 		}
 	}
 
+	function agt_did_job_change($job, $existing_post_id) {
+		$post = get_post($existing_post_id);
+		$body = $this->filter_body_text($job);
+		if ($post->post_title != $job->title || $body != $post->post_content) {
+			return true;
+		}
+		return false;
+	}
 
-	/**
-	* Adds Job as a custom post type. 
-	* @param $id string - the requisition ID of the job  
-	*/
-	function add_job($id, $existing_post_id = null) { 
-
- 		$job = $this->getRequisitionById($id);
-
-
+	function filter_body_text($job) {
 		$body_value = $this->agt_find_object($job->flexValues->item, 'Job Description Thumbnail');
 		if (!$body_value) {
 			$body_value = $job->description;
@@ -434,7 +434,20 @@ class Agt_taleo extends TaleoClient {
 		$body_value = str_replace('\xC2\xA0', ' ', $body_value);
 		$body_value = $purifier->purify($body_value);
 
-		 $my_post = array(
+		return $body_value;
+	}
+
+
+	/**
+	* Adds Job as a custom post type. 
+	* @param $id object - the job object from taleo
+	*/
+	function add_job($job, $existing_post_id = null) { 
+
+
+		$body_value = $this->filter_body_text($job);
+
+		$my_post = array(
 		  'post_title'    => $job->title,
 		  'post_content'  => $body_value,
 		  'post_status'   => 'publish',
@@ -476,7 +489,7 @@ class Agt_taleo extends TaleoClient {
 		$hiring_manager_email = $this->agt_find_object($job->flexValues->item, "Hiring Manager email");
 		$hiring_manager_name = $this->agt_find_object($job->flexValues->item, "Hiring Manager Name");
 
-		update_post_meta($post_id, 'agt_req_id', $id, TRUE);
+		update_post_meta($post_id, 'agt_req_id', $job->id, TRUE);
 
 		if(!empty($job_category)): 
 			wp_set_object_terms( $post_id, $job_category, 'function', TRUE );
