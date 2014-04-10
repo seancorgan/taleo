@@ -495,7 +495,7 @@ class Agt_taleo extends TaleoClient {
 		endif;
 
 		if(!empty($location)):
-			$location = preg_replace('/\(\w+\)/g', '', $location); 
+			$location = preg_replace('/ *\(\w+\)/', '', $location); 
 			wp_set_object_terms( $post_id, $location, 'joblocation', TRUE );
 		endif;
 
