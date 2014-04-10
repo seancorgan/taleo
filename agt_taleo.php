@@ -444,7 +444,6 @@ class Agt_taleo extends TaleoClient {
 	*/
 	function add_job($job, $existing_post_id = null) { 
 
-
 		$body_value = $this->filter_body_text($job);
 
 		$my_post = array(
@@ -495,7 +494,8 @@ class Agt_taleo extends TaleoClient {
 			wp_set_object_terms( $post_id, $job_category, 'function', TRUE );
 		endif;
 
-		if(!empty($location)): 
+		if(!empty($location)):
+			$location = preg_replace('/\(\w+\)/g', '', $location); 
 			wp_set_object_terms( $post_id, $location, 'joblocation', TRUE );
 		endif;
 
