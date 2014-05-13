@@ -272,6 +272,7 @@ class Agt_taleo extends TaleoClient {
 			foreach ($jobs as $job) {
 				$allRequisitionIds[] = $job->id;
 			 	$existing_post_id = $this->check_if_job_in_system($job->id);
+
  				$req = $this->getRequisitionById($job->id);
 				if ($existing_post_id === FALSE) {
 			 		$this->add_job($req);
@@ -376,7 +377,8 @@ class Agt_taleo extends TaleoClient {
 					$to = $user->user_email; 
 
 					$subject = $job_title." is awaiting your approval"; 
-					wp_mail( $to, $subject, $message, "Content-type: text/html");
+					$mailed = wp_mail( $to, $subject, $message, "Content-type: text/html");
+
 					return; 
 				} 
 			}
@@ -403,7 +405,12 @@ class Agt_taleo extends TaleoClient {
 			return false; 
 		}
 	}
-
+	/**
+	 * Check to see if the job changed
+	 * @param  [int] $job              the req id
+	 * @param  [int] $existing_post_id current post id
+	 * @return bool                   Return true if it changed, false if it did not change. 
+	 */
 	function agt_did_job_change($job, $existing_post_id) {
 		$post = get_post($existing_post_id);
 		$body = $this->filter_body_text($job);
@@ -441,6 +448,7 @@ class Agt_taleo extends TaleoClient {
 	/**
 	* Adds Job as a custom post type. 
 	* @param $id object - the job object from taleo
+	* @param $existing_post_id - The existing post id of the job 
 	*/
 	function add_job($job, $existing_post_id = null) { 
 
@@ -460,12 +468,11 @@ class Agt_taleo extends TaleoClient {
 			$post_id = wp_update_post( $my_post);
 		}
 		else {
-	 		$post_id = wp_insert_post( $my_post); 
+	 		$post_id = wp_insert_post( $my_post);
+	 		// Notify Workflow, only if we are a being inserted and not updated.
+	 		$this->agt_notification_workflow($post_id, $job->title);   
 		}
 
-	 	// Notify Workflow;  
-	 	$this->agt_notification_workflow($post_id, $job->title); 
-		
 		$job_type = $this->agt_find_object($job->flexValues->item, "jobType"); 
 
 		// This is a taxonomy
