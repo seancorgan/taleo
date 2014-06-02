@@ -323,6 +323,7 @@ class Agt_taleo extends TaleoClient {
 		$args = array(
 			'numberposts' => -1,
 			'post_type' => 'job',
+			'post_status' => 'any',
 			'meta_key' => 'agt_req_id',
 			'meta_value' => $id
 		);
@@ -413,7 +414,7 @@ class Agt_taleo extends TaleoClient {
 	function agt_did_job_change($job, $existing_post_id) {
 		$post = get_post($existing_post_id);
 		$body = $this->filter_body_text($job);
-		if ($post->post_title != $job->title || $body != $post->post_content) {
+		if ($post->post_title != htmlspecialchars($job->title) || $body != $post->post_content) {
 			return true;
 		}
 		return false;
