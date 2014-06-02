@@ -323,7 +323,6 @@ class Agt_taleo extends TaleoClient {
 		$args = array(
 			'numberposts' => -1,
 			'post_type' => 'job',
-			'post_status' => 'publish',
 			'meta_key' => 'agt_req_id',
 			'meta_value' => $id
 		);
@@ -457,7 +456,7 @@ class Agt_taleo extends TaleoClient {
 		$my_post = array(
 		  'post_title'    => $job->title,
 		  'post_content'  => $body_value,
-		  'post_status'   => 'publish',
+		  'post_status'   => 'pending',
 		  'post_type' => 'job',
 		  'post_author'   => 1
 		);
