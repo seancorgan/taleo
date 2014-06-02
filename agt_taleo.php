@@ -292,6 +292,7 @@ class Agt_taleo extends TaleoClient {
 			$args = array(
 				'numberposts' => -1,
 				'post_type' => 'job',
+				'post_status' => 'any',
 				'meta_query' => array(
 					array(
 						'key' => 'agt_req_id',
