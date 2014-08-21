@@ -270,6 +270,9 @@ class Agt_taleo extends TaleoClient {
 		$allRequisitionIds = array();
 		if(!empty($jobs)):
 			foreach ($jobs as $job) {
+				if ( $this->agt_find_object($job->flexValues->item, 'Global Business Unit') === 'Vocativ' ) {
+					continue;
+				}
 				$allRequisitionIds[] = $job->id;
 			 	$existing_post_id = $this->check_if_job_in_system($job->id);
 
