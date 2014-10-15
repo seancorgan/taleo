@@ -349,7 +349,7 @@ class Agt_taleo extends TaleoClient {
 	*/
 	function agt_find_object($array_of_objects, $field_type) { 
 
-		$callback = function ($e, $field_type) use ($array_of_objects, $field_type) {
+		$callback = function ($e) use ($array_of_objects, $field_type) {
 		    return $e->fieldName == $field_type; 
 		};
 		  
@@ -461,7 +461,6 @@ class Agt_taleo extends TaleoClient {
 		$my_post = array(
 		  'post_title'    => $job->title,
 		  'post_content'  => $body_value,
-		  'post_status'   => 'pending',
 		  'post_type' => 'job',
 		  'post_author'   => 1
 		);
@@ -472,6 +471,7 @@ class Agt_taleo extends TaleoClient {
 			$post_id = wp_update_post( $my_post);
 		}
 		else {
+			$my_post['post_status'] = 'pending';
 	 		$post_id = wp_insert_post( $my_post);
 	 		// Notify Workflow, only if we are a being inserted and not updated.
 	 		$this->agt_notification_workflow($post_id, $job->title);   
